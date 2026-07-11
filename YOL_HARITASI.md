@@ -122,12 +122,14 @@ Organizatörlerin önerdiği mimari:
 
 ## 5. Haftalık Yol Haritası
 
+> **Çalışma ortamı:** Tüm deneyler **Kaggle notebook**'ta koşar (yerelde çalıştırmıyoruz). Veri `/kaggle/input/...` altında bağlı gelir; bu repo notebook + `src/` + config versiyonlaması içindir. `src/` modüllerini bir **Kaggle utility dataset** olarak yükleyip notebook'a ekleyin.
+
 ### Hafta 1 — Kurulum & Veriyi Anlama
 - [ ] Kaggle yarışmasına takım olarak katıl, kuralları oku (özellikle harici veri / GPU kotası).
-- [ ] Veriyi indir; `open_dataset()` ile bir train örneğini yükle.
-- [ ] **Görüntüyü napari'de aç**, ground-truth track'leri üstüne bindir. Verinin nasıl göründüğünü gözünle gör (bu adım paha biçilmez).
+- [ ] `notebooks/01_eda.ipynb`'i Kaggle'a yükle; `open_dataset()` ile bir train örneğini yükle.
+- [ ] Görüntüyü ve ground-truth track'leri incele (Kaggle'da napari başsız; slice görsellerini kaydedip indir veya notebook içi 2B projeksiyonla bak). Verinin nasıl göründüğünü gözünle gör.
 - [ ] `(T, Z, Y, X)` boyutlarını, ölçekleri, seyrek etiket yoğunluğunu not al.
-- [ ] Metrik kodunu (`metrics.md` + eval script) yerelde çalıştır; **ground-truth'u kendisine gönderip 1.0 aldığını doğrula** (sanity check).
+- [ ] Metrik kodunu (`metrics.md` + eval) notebook'ta çalıştır; **ground-truth'u kendisine verip 1.0 aldığını doğrula** (sanity check).
 
 ### Hafta 2 — İlk Gönderim (Baseline)
 - [ ] Getting-started notebook'unu çalıştır: [Nearest Neighbor baseline](https://www.kaggle.com/code/inversion/cell-tracking-getting-started-w-nearest-neighbor).
@@ -165,9 +167,9 @@ Organizatörlerin önerdiği mimari:
 | Linking (DL) | Cross-attention transformer | Organizatör baseline'ı |
 | Graf işlemleri | `tracksdata` (`InMemoryGraph`) | Node/edge/bölünme |
 | Sayısal işlem | `scipy`, `numpy`, `polars` | LMS, Hungarian, I/O |
-| Görselleştirme | **napari** | 3B hata ayıklama — vazgeçilmez |
-| Ortam yönetimi | `uv` veya `conda` | Bağımlılıklar |
-| Hesaplama | Kaggle GPU / kendi GPU'nuz | 3B veri ağır — bellek yönetimi kritik |
+| Görselleştirme | **napari** | 3B hata ayıklama (Kaggle'da başsız çalışır; görseli indirip incele) |
+| Kod paylaşımı | Kaggle **utility dataset** | `src/`'yi dataset olarak yükle, notebook'a import et |
+| Hesaplama | **Kaggle GPU notebook** | Tüm deneyler Kaggle'da; haftalık GPU kotasına dikkat |
 
 ---
 

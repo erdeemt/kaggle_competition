@@ -12,3 +12,19 @@ venv/
 
 # Local settings (keep shared .claude/skills tracked)
 .claude/settings.local.json
+
+# Yarışma verisi (Kaggle'da /kaggle/input altında; repoda tutulmaz)
+*.zarr
+*.geff
+/data/
+
+# Model ağırlıkları (Kaggle dataset'lerinde tutulur)
+*.pth
+*.pt
+*.ckpt
+
+# Çıktılar — sadece .gitkeep ve arşivlenen submission'lar versiyonlanır
+outputs/predictions/*
+!outputs/predictions/.gitkeep
+outputs/figures/*
+!outputs/figures/.gitkeep
