@@ -1,0 +1,9 @@
+# Kaggle notebook pip referansi
+ultrack
+tracksdata
+zarr
+ome-zarr
+monai
+napari[all]
+polars
+scikit-image
