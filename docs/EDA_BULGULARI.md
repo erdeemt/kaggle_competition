@@ -68,6 +68,49 @@ tüm train örnekleri üzerinden.
 6. **Çıktı:** graf → `.geff` → CSV (`geffs_to_csv`), gönder.
 
 ## Hâlâ teyit edilecek (metin çıktısı)
-- [ ] `shape (T,Z,Y,X)` ve `>> Kullanilacak olcek` (Z sayısı ve ölçek kesin değeri)
 - [ ] `sample_submission.csv` kolonları/formatı ← gönderim şeması için şart
 - [ ] `axes meta` (birim etiketi)
+
+---
+
+# Detaylı EDA (`01b_eda_detailed`) — dataset geneli
+
+Figürler: `outputs/figures/D02`–`D10`. Analizler artık **tek örnek değil, tüm train**.
+
+## A. Yoğunluk & yapı ([D02](../outputs/figures/D02_gt_density.png), [D03](../outputs/figures/D03_lineage.png))
+- **Kare başına ~5–6 etiketli node** (tipik 2–15, max ~30) — ilk örnek (1/kare) atipikmiş.
+- **Örnek başına ~15–25 soy** (max ~80); node ≈ soy × ~25.
+- Soy uzunluğu/süresi: çoğu 10–50 kare, **t=0→99 tam kapsayan** belirgin bir grup var.
+- **Zamansal boşluk YOK:** uzunluk ≈ süre (veya bölünmeyle üstü). → **gap-closing gerekmez.**
+
+## B. Linking — havuzlanmış hareket ([D04](../outputs/figures/D04_motion_pooled.png), [D05](../outputs/figures/D05_persistence.png))
+- |yer değiştirme|: medyan ~2–3 µm, **95p ~5.5 µm, 99p ~8 µm, ~%95 < 7 µm**. İnce kuyruk 15–60 µm (nadir; hızlı hücre/olası bölünme).
+- → **`max_distance ≈ 8 µm`** (95–99p'yi kapsar).
+- Yön kalıcılığı **kısmi**: hızlı hücreler düz gider (cos→+1), yavaşlar jitter yapar. Hareket modeli **marjinal** fayda; NN-linking yeterli.
+
+## C. Eşleşme belirsizliği — kalabalıklık ([D06](../outputs/figures/D06_crowding.png)) ✅
+- Kare-içi **GT-GT en yakın komşu medyan ~25 µm**; **<7 µm sadece ~%1–2**.
+- → **Metrik eşleşmesi neredeyse belirsizliksiz**; 7 µm tolerans güvenli. (Çünkü GT seyrek/yayılı; her çekirdek değil.)
+
+## D. Detection ([D09](../outputs/figures/D09_detection.png))
+- Çekirdek ~**10 µm çap** (yarı-maks yarıçap ~5 µm), her Z derinliğinde GT var ([D10](../outputs/figures/D10_zbehavior.png)).
+- Global foreground sinyali güçlü ([07b], ~8×) **ama yerel komşu-kontrastı düşük (~1.5×)** — çekirdekler paketli/temas halinde.
+  → **Zor kısım instance ayrımı**, foreground değil. Tam da **Ultrack'in çoklu-hipotez segmentasyonunun** çözdüğü problem.
+- ⚠️ **Notebook'taki blob sayacı bozuk** (Otsu eşiği çok yüksek → 1–4 blob; gerçekte yüzlerce olmalı). **T_true tahmini bu haliyle güvenilmez** — düzgün detector (LoG/DoG / Ultrack) ile yeniden hesaplanmalı.
+
+## E. Bölünme ([D07](../outputs/figures/D07_division.png))
+- ~120 bölünme; zamanda yayvan. **ebeveyn-kız ~6 µm**, kız-kız ~11 µm.
+- ebeveyn-kız < linking radius → **aynı ~8 µm radius bölünme kenarlarını da yakalar.** Biraz büyük radius bölünmeleri kaçırmaz.
+
+## F. Track doğuş/ölüm ([D08](../outputs/figures/D08_endpoints.png))
+- Çoğu track **t0→t99 tam kapsam**; mid-movie başlangıç/bitiş de var.
+- **Bitişler alan kenarında yoğun** → hücreler görüş alanından çıkıyor. → tracker'da **appearance/disappearance maliyeti** gerekli.
+
+---
+
+## Güncellenmiş baseline kararları (Ultrack)
+1. **Ölçek:** anizotropik `(1.625, 0.40625, 0.40625)` ver (mesafeler µm).
+2. **Detection:** foreground eşiği düşük (tissue parlak) **ama instance için contour/çoklu-hipotez** kullan (asıl zorluk ayrım).
+3. **Linking:** `max_distance ≈ 8 µm`; **gap-closing kapalı** (boşluk yok); **appearance/disappearance açık**; **division açık** (ebeveyn-kız ~6 µm).
+4. **Fazla-tahmin cezası:** `T_pred`'i gerçek hücre sayısına yakın tut — önce **düzgün blob sayımıyla T_true** tahmin et (mevcut sayaç düzeltilmeli).
+5. **Öncelik:** edge %90 → linking; division %10 sonra.
