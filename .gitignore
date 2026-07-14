@@ -23,8 +23,6 @@ venv/
 *.pt
 *.ckpt
 
-# Çıktılar — sadece .gitkeep ve arşivlenen submission'lar versiyonlanır
+# Çıktılar — ağır ara tahminler hariç. Figürler repoda tutulur (EDA/rapor).
 outputs/predictions/*
 !outputs/predictions/.gitkeep
-outputs/figures/*
-!outputs/figures/.gitkeep
