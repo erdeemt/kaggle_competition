@@ -94,9 +94,12 @@ Figürler: `outputs/figures/D02`–`D10`. Analizler artık **tek örnek değil, 
 
 ## D. Detection ([D09](../outputs/figures/D09_detection.png))
 - Çekirdek ~**10 µm çap** (yarı-maks yarıçap ~5 µm), her Z derinliğinde GT var ([D10](../outputs/figures/D10_zbehavior.png)).
-- Global foreground sinyali güçlü ([07b], ~8×) **ama yerel komşu-kontrastı düşük (~1.5×)** — çekirdekler paketli/temas halinde.
+- Global foreground sinyali güçlü ([07b], ~8×) **ama yerel komşu-kontrastı düşük (~1.5× SNR)** — çekirdekler paketli/temas halinde.
   → **Zor kısım instance ayrımı**, foreground değil. Tam da **Ultrack'in çoklu-hipotez segmentasyonunun** çözdüğü problem.
-- ⚠️ **Notebook'taki blob sayacı bozuk** (Otsu eşiği çok yüksek → 1–4 blob; gerçekte yüzlerce olmalı). **T_true tahmini bu haliyle güvenilmez** — düzgün detector (LoG/DoG / Ultrack) ile yeniden hesaplanmalı.
+- **T_true tahmini (düzeltilmiş sayaç):** ~**213 çekirdek/kare** (medyan; örnekler arası ~50–730 geniş dağılım).
+  - Örnek başına toplam gerçek hücre ≈ **~21.000** (213 × 100 kare).
+  - **GT etiketli oran ~%2–3** (kare başına ~5–6 etiketli / ~213 gerçek). Yani takip edilecek gerçek hücre sayısı çok yüksek, GT bunun küçük bir örneklemi.
+  - **Fazla-tahmin cezası:** `T_pred ≈ 200/kare` hedefle; binlerce gürültü-tespiti cezalandırılır.
 
 ## E. Bölünme ([D07](../outputs/figures/D07_division.png))
 - ~120 bölünme; zamanda yayvan. **ebeveyn-kız ~6 µm**, kız-kız ~11 µm.
@@ -112,5 +115,5 @@ Figürler: `outputs/figures/D02`–`D10`. Analizler artık **tek örnek değil, 
 1. **Ölçek:** anizotropik `(1.625, 0.40625, 0.40625)` ver (mesafeler µm).
 2. **Detection:** foreground eşiği düşük (tissue parlak) **ama instance için contour/çoklu-hipotez** kullan (asıl zorluk ayrım).
 3. **Linking:** `max_distance ≈ 8 µm`; **gap-closing kapalı** (boşluk yok); **appearance/disappearance açık**; **division açık** (ebeveyn-kız ~6 µm).
-4. **Fazla-tahmin cezası:** `T_pred`'i gerçek hücre sayısına yakın tut — önce **düzgün blob sayımıyla T_true** tahmin et (mevcut sayaç düzeltilmeli).
+4. **Fazla-tahmin cezası:** `T_pred ≈ 200 çekirdek/kare` hedefle (T_true ~213/kare). Gürültü-tespitlerini eşikle; binlerce yanlış node cezalandırılır.
 5. **Öncelik:** edge %90 → linking; division %10 sonra.
