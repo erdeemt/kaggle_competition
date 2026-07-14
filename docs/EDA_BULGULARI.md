@@ -67,9 +67,21 @@ tüm train örnekleri üzerinden.
 5. **Skor önceliği:** edge %90 → sağlam linking; division %10 → sonra.
 6. **Çıktı:** graf → `.geff` → CSV (`geffs_to_csv`), gönder.
 
-## Hâlâ teyit edilecek (metin çıktısı)
-- [ ] `sample_submission.csv` kolonları/formatı ← gönderim şeması için şart
-- [ ] `axes meta` (birim etiketi)
+## Gönderim formatı (`sample_submission.csv`) ✅
+
+Grafı **düz CSV** olarak kodlar. Kolonlar:
+`id, dataset, row_type, node_id, t, z, y, x, source_id, target_id`
+
+- **node** satırı: `row_type=node`, `node_id` (dataset içinde **1'den** başlar), `t,z,y,x` (**voxel** birimi), `source_id=target_id=-1`.
+- **edge** satırı: `row_type=edge`, `node_id=-1`, `t=z=y=x=-1`, `source_id→target_id` (t'deki node_id → t+1'deki node_id).
+- **Bölünme:** ebeveyn node_id, iki ayrı edge satırında `source_id` olarak yer alır (1 ebeveyn → 2 çocuk).
+- `id` = global satır indeksi (0,1,2,…). `dataset` = test örnek adı (`44b6_*`, `6bba_*` — farklı embriyolar).
+
+> Yani her test datası için: (a) tespit+takip edilen node'ları koordinatlarıyla yaz,
+> (b) linkleri source/target node_id ile yaz. `geffs_to_csv` bunu üretir; biz grafı kurup dökeceğiz.
+
+## Hâlâ teyit edilecek
+- [ ] `axes meta` (birim etiketi — voxel olduğu koordinat aralığından zaten teyitli)
 
 ---
 
