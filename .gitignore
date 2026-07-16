@@ -17,14 +17,13 @@ venv/
 *.zarr
 *.geff
 /data/
+sample_submission.csv
 
 # Model ağırlıkları (Kaggle dataset'lerinde tutulur)
 *.pth
 *.pt
 *.ckpt
 
-# Çıktılar — sadece .gitkeep ve arşivlenen submission'lar versiyonlanır
+# Çıktılar — ağır ara tahminler hariç. Figürler repoda tutulur (EDA/rapor).
 outputs/predictions/*
 !outputs/predictions/.gitkeep
-outputs/figures/*
-!outputs/figures/.gitkeep
