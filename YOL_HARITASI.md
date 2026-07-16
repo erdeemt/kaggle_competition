@@ -27,12 +27,46 @@ Bu klasik bir sınıflandırma/regresyon değil. İki alt problemi birleştiren 
 
 ---
 
+## 1.5. ⚠️ ORTAM KISITLARI — Planı Belirleyen Gerçekler
+
+> Bunlar veriden ve Kaggle submit ekranından **doğrulandı** (bkz. [docs/EDA_BULGULARI.md](docs/EDA_BULGULARI.md)).
+> Aşağıdaki 4. bölümün orijinal planını **geçersiz kılar**.
+
+Bu bir **code competition**: seçtiğiniz notebook, **gizli test seti veriyle değiştirilerek**
+private olarak yeniden çalıştırılır; skor o çalıştırmanın `submission.csv` çıktısından hesaplanır.
+
+| Kısıt | Sonuç |
+|---|---|
+| **Internet KAPALI zorunlu** | `pip install` **imkânsız** — utility dataset şart |
+| **`zarr` imajda YOK** | Veri okunamaz → `cell-tracking-libs` dataset'i **zorunlu** |
+| **Test verisi runtime'da değişir** | Test isimlerini **hardcode etme**, `test/*.zarr` glob'la |
+| **GPU yok** (`torch 2.10.0+cpu`) | 3B U-Net eğitimi gerçekçi değil |
+
+- **VAR:** `skimage`, `scipy`, `networkx`, `polars`, `pandas`, `numpy 2.0.2`, `numba`,
+  `pulp`, `cvxpy`, `torch(+cpu)`, `dask`, `xarray`, `blosc2`, `zstandard`
+- **YOK:** **`zarr`**, **`numcodecs`**, `ultrack`, `tracksdata`, `geff`, `monai`, `cupy`, `higra`, `edt`
+
+**Zorunlu ilk hücre** (envanteri internet KAPALIYKEN al — açıkken liste yanıltıcı):
+```python
+import sys
+sys.path.append('/kaggle/input/datasets/erdeemt/cell-tracking-libs/pylibs')  # append! insert(0) DEGIL
+import zarr
+```
+Dataset `zarr 3.2.1` + `numcodecs` sağlar; içindeki `numpy 2.5.1` ortamın `2.0.2`'sini
+gölgelememeli, o yüzden **`append`**. Dataset submit edilen notebook'a **ekli** olmalı.
+
+**`test/` içindeki dosyalar placeholder'dır** — `train/`deki aynı isimlilerle bayt-bayt aynı
+(md5 doğrulandı). Sızıntı değil; gerçek test private re-run'da yerlerine geçer.
+
+---
+
 ## 2. Veri Yapısı (Çok Önemli — İlk Gün Anlaşılmalı)
 
 ```
 /kaggle/input/competitions/biohub-cell-tracking-during-development/
-├── train/    → eşleşmiş .zarr (görüntü) + .geff (ground-truth track grafı)
-└── test/     → sadece .zarr (görüntü) — tahminlerinizi bunun için üreteceksiniz
+├── sample_submission.csv
+├── train/    → eşleşmiş .zarr (görüntü) + .geff (ground-truth track grafı)  [199 örnek]
+└── test/     → sadece .zarr (görüntü) — placeholder; runtime'da gizli setle değişir
 ```
 
 ### 2.1 Görüntü formatı: OME-Zarr
@@ -90,11 +124,34 @@ Tüm videolar üzerinde **micro-average** alınır.
 
 ---
 
-## 4. Önerilen Teknik Yaklaşımlar
+## 4. Teknik Yaklaşımlar
 
-İki ana yol var. İkisini de aşamalı denemenizi öneririz.
+> ### 🔴 GÜNCELLEME — YOL A ve YOL B'nin ikisi de KAPALI
+> `ultrack` ve `monai` imajda yok, internet kapalı olduğu için kurulamıyorlar; ayrıca GPU yok.
+> **Geçerli plan: aşağıdaki YOL C.** YOL A/B tarihsel referans olarak bırakıldı.
 
-### YOL A — Klasik / Ultrack tabanlı (hızlı başlangıç, güçlü baseline) ⭐ ÖNCE BU
+### YOL C — Klasik, sıfır ek bağımlılık ⭐ GEÇERLİ PLAN
+
+İmajda hazır olan paketlerle **tam bir pipeline** kurulabiliyor:
+
+| Aşama | Araç | Parametre (EDA'dan) |
+|---|---|---|
+| Normalizasyon | zarr attrs `image_statistics.quantiles` | hesap gerekmez |
+| Detection | `skimage` + `scipy.ndimage.maximum_filter` | anizotropik local-max, bastırma ~5 µm = `(3,12,12)` voxel |
+| Hedef yoğunluk | — | **`T_pred ≈ 200/kare`** (T_true ~213) |
+| Linking | `scipy.optimize.linear_sum_assignment` | gate **8 µm**, gap-closing kapalı |
+| Graf → CSV | `networkx` + `pandas` | `submission.csv` |
+
+EDA bunun işe yarayacağını söylüyor: hareket 2–3 µm medyan, ~%95'i 7 µm altında → Hungarian
+linking edge'lerin çoğunu doğru bağlar ve skorun **%90'ı edge**. Bölünme (%10) sona bırakılır.
+
+**İleride:** `pulp`/`cvxpy` var → istenirse Ultrack'in ILP mantığı elle kurulabilir.
+Ultrack'i utility dataset'e paketlemek (`higra`, `edt` wheel'leri) mümkün ama baseline
+skoru görülmeden yatırım yapılmamalı.
+
+---
+
+### YOL A — Ultrack tabanlı ❌ (kapalı: `ultrack` kurulamıyor)
 Royer Lab'in kendi aracı **Ultrack**, tam da bu veri için tasarlandı. En hızlı yüksek skoru bununla alırsınız.
 
 **Boru hattı (pipeline):**
@@ -106,7 +163,7 @@ Royer Lab'in kendi aracı **Ultrack**, tam da bu veri için tasarlandı. En hız
 
 **Kütüphaneler:** [`ultrack`](https://github.com/royerlab/ultrack), `napari` (3B görselleştirme + hata ayıklama), `tracksdata`.
 
-### YOL B — Derin öğrenme (yarışma için organizatör baseline'ı)
+### YOL B — Derin öğrenme ❌ (kapalı: `monai` yok, GPU yok, `torch` CPU-only)
 Organizatörlerin önerdiği mimari:
 
 1. **Detection:** **Temporal attention'lı 3B U-Net** → voxel bazında özellik + tespit olasılık haritası. **Local-maximum suppression** ile merkez koordinatları çıkarılır.
@@ -116,7 +173,10 @@ Organizatörlerin önerdiği mimari:
 **Kütüphaneler:** PyTorch, `tracksdata`, `zarr`, `polars`, `scipy`, `napari`, `monai` (3B tıbbi görüntü için hazır U-Net'ler).
 
 ### Önerilen strateji
-> **Önce YOL A ile leaderboard'a bir skor koyun** (1. hafta). Ardından YOL B ile detection kalitesini artırın veya YOL A'nın segmentasyon adımını bir sinir ağıyla besleyin (**hibrit**: DL detection + Ultrack linking — genellikle en iyi sonuç bu).
+> ~~Önce YOL A ile leaderboard'a bir skor koyun~~ → **YOL C ile leaderboard'a bir skor koyun.**
+> Ultrack/DL yolları ortam kısıtlarıyla kapalı. Skor geldikten sonra iyileştirme sırası:
+> (1) detection eşiği/`T_pred` kalibrasyonu, (2) linking maliyet fonksiyonu,
+> (3) bölünme, (4) gerekirse Ultrack'i utility dataset'e paketleme.
 
 ---
 
@@ -131,11 +191,13 @@ Organizatörlerin önerdiği mimari:
 - [ ] `(T, Z, Y, X)` boyutlarını, ölçekleri, seyrek etiket yoğunluğunu not al.
 - [ ] Metrik kodunu (`metrics.md` + eval) notebook'ta çalıştır; **ground-truth'u kendisine verip 1.0 aldığını doğrula** (sanity check).
 
-### Hafta 2 — İlk Gönderim (Baseline)
-- [ ] Getting-started notebook'unu çalıştır: [Nearest Neighbor baseline](https://www.kaggle.com/code/inversion/cell-tracking-getting-started-w-nearest-neighbor).
-- [ ] [Classical Baseline](https://www.kaggle.com/code/xiaoleilian/biohub-cell-tracking-classical-baseline) notebook'unu incele/çalıştır.
+### Hafta 2 — İlk Gönderim (Baseline) — **YOL C**
+- [ ] `02_baseline_classical.ipynb`: detection (local-max) + linking (Hungarian 8 µm) → `submission.csv`.
+- [ ] **Internet KAPALI** olduğunu doğrula; test isimlerinin glob'landığını doğrula.
+- [ ] `T_pred ≈ 200/kare` olacak şekilde eşiği kalibre et (fazla-tahmin cezası).
 - [ ] **İlk CSV'yi gönder** — sıralamada bir sayı görmek moral ve referans verir.
-- [ ] Ultrack'i "automatic tracking from image" modunda test veri setine uygula.
+- [ ] Çalışma süresini ölç; gizli test daha büyük olabilir (bütçe payı bırak).
+- [ ] ~~Ultrack'i test veri setine uygula~~ (kapalı).
 
 ### Hafta 3–4 — Detection Kalitesini Yükselt
 - [ ] Detection'ı ölç: kaç GT node'u 7 µm içinde yakalayabiliyorsun? (recall).
@@ -161,15 +223,17 @@ Organizatörlerin önerdiği mimari:
 
 | Amaç | Araç | Not |
 |------|------|-----|
-| Veri okuma | `zarr`, `tracksdata`, `open_dataset()` | OME-Zarr chunk okuma |
-| Takip (klasik) | **Ultrack** | Bu veri için tasarlandı — önce bunu dene |
-| Detection (DL) | **PyTorch + MONAI** | 3B U-Net, temporal attention |
-| Linking (DL) | Cross-attention transformer | Organizatör baseline'ı |
-| Graf işlemleri | `tracksdata` (`InMemoryGraph`) | Node/edge/bölünme |
-| Sayısal işlem | `scipy`, `numpy`, `polars` | LMS, Hungarian, I/O |
-| Görselleştirme | **napari** | 3B hata ayıklama (Kaggle'da başsız çalışır; görseli indirip incele) |
-| Kod paylaşımı | Kaggle **utility dataset** | `src/`'yi dataset olarak yükle, notebook'a import et |
-| Hesaplama | **Kaggle GPU notebook** | Tüm deneyler Kaggle'da; haftalık GPU kotasına dikkat |
+| Veri okuma | **`zarr` 3.2.1** | OME-Zarr v3; chunk = 1 zaman karesi |
+| GT okuma | **düz `zarr`** | `geff`/`tracksdata` YOK — gerek de yok |
+| Detection | **`skimage` + `scipy.ndimage`** | anizotropik local-max |
+| Linking | **`scipy.optimize.linear_sum_assignment`** | Hungarian, 8 µm gate |
+| Graf işlemleri | **`networkx`** | node/edge/bölünme |
+| Çıktı | **`pandas`** | `submission.csv` |
+| ~~Takip (klasik)~~ | ~~Ultrack~~ | ❌ kurulamıyor |
+| ~~Detection (DL)~~ | ~~PyTorch + MONAI~~ | ❌ monai yok, GPU yok |
+| ~~Görselleştirme~~ | ~~napari~~ | ❌ yok; matplotlib 2B projeksiyon kullan |
+| Kod paylaşımı | Kaggle **utility dataset** | `src/`'yi dataset olarak yükle (internet gerekmez) |
+| Hesaplama | **Kaggle notebook (CPU)** | Internet KAPALI zorunlu; süre limitine dikkat |
 
 ---
 
@@ -213,4 +277,6 @@ Organizatörlerin önerdiği mimari:
 ---
 
 ### TL;DR
-> Zebra balığı embriyosunda 3B+zaman mikroskop videolarında hücreleri **tespit et** ve **soy ağacını** çıkar. Skor = %90 doğru bağlama + %10 bölünme (7 µm eşleşme toleransı, anizotropik voxel). **Önce Ultrack ile baseline kur, sonra derin öğrenme detection'ı ile geliştir.** En büyük tuzaklar: anizotropi (µm kullan), seyrek etiket, ve fazla-tahmin cezası.
+> Zebra balığı embriyosunda 3B+zaman mikroskop videolarında hücreleri **tespit et** ve **soy ağacını** çıkar. Skor = %90 doğru bağlama + %10 bölünme (7 µm eşleşme toleransı, anizotropik voxel).
+>
+> **Bu bir code competition: internet YOK, GPU YOK, test verisi runtime'da değişir.** Ultrack ve MONAI kurulamıyor → **YOL C**: `skimage` local-max detection + `scipy` Hungarian linking (8 µm). En büyük tuzaklar: anizotropi (µm kullan), test isimlerini hardcode etmek, ve fazla-tahmin cezası (**`T_pred ≈ 200/kare`** hedefle).
