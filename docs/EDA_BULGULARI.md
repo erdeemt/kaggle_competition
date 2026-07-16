@@ -85,6 +85,28 @@ Grafı **düz CSV** olarak kodlar. Kolonlar:
 
 ---
 
+# Birleşik bulgular (`erd_exp/eda_detailed` + `bet_exp/eda`)
+
+Betül'ün `bet_exp/eda` dalındaki 199-örnek özet CSV'siyle çapraz doğrulandı.
+
+## 0. Dataset künyesi (kesin)
+- **199 train örneği**, hepsi `(T,Z,Y,X) = (100, 64, 256, 256)`, `uint16`. Fiziksel ≈ 104³ µm küp.
+- Toplam **133.318 node / 128.883 edge / 151 bölünme**. **112/199 örnekte hiç bölünme yok**.
+
+## 0b. ⭐ İKİ DOMAIN — `44b6` vs `6bba` (Betül'ün bulgusu, doğrulandı)
+
+| Grup | Örnek | Medyan node | node/kare | Bölünme | Bölünmesiz |
+|---|---|---|---|---|---|
+| `44b6` | 71 | 214 (50–1353) | **2.1** | 26 | 50/71 |
+| `6bba` | 128 | 826 (209–1950) | **8.4** | 125 | 62/128 |
+
+- Etiket yoğunluğu **~4× farklı**. Başka prefix yok.
+- **CV'yi prefix'e göre stratify et** — iki domain de hem train hem val'de temsil edilsin.
+- ⚠️ Bu, aşağıdaki "kare başına ~5–6 node" gibi **genel medyanların iki popülasyonun karışımı** olduğunu gösteriyor.
+- ⚠️ Bizim derin incelediğimiz `44b6_0113de3b` (52 node, 1.0 node/kare) **en seyrek uç** — temsili değil.
+
+---
+
 # Detaylı EDA (`01b_eda_detailed`) — dataset geneli
 
 Figürler: `outputs/figures/D02`–`D10`. Analizler artık **tek örnek değil, tüm train**.
