@@ -28,3 +28,6 @@ outputs/predictions/*
 !outputs/predictions/.gitkeep
 outputs/figures/*
 !outputs/figures/.gitkeep
+
+# royerlab repo referans kopyasi (egitim kodu okumak icin, commit etme)
+tracking_repo_ref/
